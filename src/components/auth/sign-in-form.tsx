@@ -25,6 +25,8 @@ import Link from 'next/link';
 
 const SignInForm = () => {
     const searchParams = useSearchParams();
+    const callbackUrl = searchParams.get('callbackUrl');
+
     const urlError =
         searchParams.get('error') === 'OAuthAccountNotLinked'
             ? 'Email already in use with different provider!'
@@ -49,7 +51,7 @@ const SignInForm = () => {
 
         // Server side validation
         startTransition(() => {
-            login(data)
+            login(data, callbackUrl)
                 .then(res => {
                     if (res?.error) {
                         form.reset();

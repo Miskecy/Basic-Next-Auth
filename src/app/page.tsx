@@ -10,7 +10,7 @@ const HomePage = () => {
                 <h1 className="text-2xl font-semibold drop-shadow-md">Auth</h1>
                 <p className="text-md">A simple authentication service</p>
                 <div>
-                    <SignInButton>
+                    <SignInButton mode="modal" asChild>
                         <Button
                             size="lg"
                             variant="default"

@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 
 import { FcGoogle } from 'react-icons/fc';
@@ -8,12 +9,15 @@ import { Button } from '@/components/ui/button';
 import { DEFAULT_LOGIN_REDIRECT_URL } from '@/routes';
 
 const Social = () => {
+    const searchParams = useSearchParams();
+    const callbackUrl = searchParams.get('callbackUrl');
+
     const onClick = (provider: 'google' | 'github') => {
         signIn(provider, {
-            callbackUrl: DEFAULT_LOGIN_REDIRECT_URL,
+            callbackUrl: callbackUrl ?? DEFAULT_LOGIN_REDIRECT_URL,
         });
     };
-    const abc = process.env.GOOGLE_CLIENT_ID;
+
     return (
         <div className="flex items-center w-full gap-x-2">
             <Button

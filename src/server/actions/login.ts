@@ -13,7 +13,7 @@ import { sendTwoFactorToken, sendVerificationEmail } from '@/lib/mail';
 import { getTwoFactorTokenByEmail } from '@/server/utils/two-factor-token';
 import { getTwoFactorConfirmationByUserId } from '@/server/utils/two-factor-confirmation';
 
-export const login = async (values: z.infer<typeof SignInSchema>) => {
+export const login = async (values: z.infer<typeof SignInSchema>, callbackUrl: string | null) => {
 	const validatedFields = SignInSchema.safeParse(values);
 
 	if (!validatedFields.success) {
@@ -86,7 +86,7 @@ export const login = async (values: z.infer<typeof SignInSchema>) => {
 		await signIn("credentials", {
 			email,
 			password,
-			redirectTo: DEFAULT_LOGIN_REDIRECT_URL
+			redirectTo: callbackUrl ?? DEFAULT_LOGIN_REDIRECT_URL
 		});
 	} catch (error) {
 		if (error instanceof AuthError) {
