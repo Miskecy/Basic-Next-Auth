@@ -10,7 +10,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-    title: 'Auth - Basics',
+    title: 'Basic Next.js Auth',
     description: 'A simple authentication app built with Next.js and Prisma',
 };
 

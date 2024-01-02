@@ -1,5 +1,11 @@
+import { Metadata } from 'next';
 import { PropsWithChildren } from 'react';
 import Navbar from './_components/navbar';
+
+export const metadata: Metadata = {
+    title: 'Basic Next.js Auth - Dashboard',
+    description: 'A simple authentication app built with Next.js and Prisma',
+};
 
 const ProtectedLayout = ({ children }: PropsWithChildren) => {
     return (
