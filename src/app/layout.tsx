@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { auth } from '@/auth';
 import { SessionProvider } from 'next-auth/react';
 import { Toaster as Sonner } from '@/components/ui/sonner';
+import TRPCProvider from './_trpc/provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -30,7 +31,7 @@ export default async function RootLayout({
                     )}
                 >
                     <Sonner />
-                    {children}
+                    <TRPCProvider>{children}</TRPCProvider>
                 </body>
             </html>
         </SessionProvider>
