@@ -4,7 +4,8 @@ import {
 	DEFAULT_LOGIN_REDIRECT_URL,
 	publicRoutes,
 	authRoutes,
-	apiAuthPrefix
+	apiAuthPrefix,
+	trpcPrefix
 } from "@/routes";
 
 const { auth } = NextAuth(authConfig);
@@ -18,6 +19,10 @@ export default auth((req) => {
 	const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
 
 	if (isApiAuthRoute) {
+		return null;
+	}
+
+	if (trpcPrefix) {
 		return null;
 	}
 

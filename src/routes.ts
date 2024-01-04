@@ -29,7 +29,14 @@ export const authRoutes = [
 export const apiAuthPrefix = "/api/auth";
 
 /**
+ * The Prefix for the TRPC routes
+ * Routes that start with this prefix are used for TRPC
+ * @type {string}
+ */
+export const trpcPrefix = "/api/trpc";
+
+/**
  * The default redirect URL after login in
  * @type {string}
  */
-export const DEFAULT_LOGIN_REDIRECT_URL = "/settings";
+export const DEFAULT_LOGIN_REDIRECT_URL = "/settings"; 
