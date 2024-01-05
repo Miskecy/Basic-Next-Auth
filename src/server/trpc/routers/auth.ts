@@ -1,6 +1,7 @@
 import z from 'zod';
 import { AuthError } from 'next-auth';
 import { router, publicProcedure } from '@/server/trpc/trpc';
+import { compare } from 'bcryptjs'
 
 import { signIn } from '@/auth';
 import db from '@/lib/db';
@@ -19,21 +20,16 @@ export const authRouter = router({
 			data: SignInSchema,
 		})
 	).mutation(async ({ input }) => {
-		const { data } = input;
-		const validatedFields = SignInSchema.safeParse(data);
-
-		if (!validatedFields.success) {
-			return { error: "Invalid fields." };
-		}
-
-		const { email, password, code } = validatedFields.data;
+		const { email, password, code } = input.data;
 
 		const existingUser = await getUserByEmail(email);
 
+		// Check witch provider is used
 		if (!existingUser || !existingUser.password || !existingUser.email) {
 			return { error: "Email does not exist!" };
 		}
 
+		// Check if email is verified
 		if (!existingUser.emailVerified) {
 			const verificationToken = await generateVerificationToken(existingUser.email);
 			await sendVerificationEmail(verificationToken.email, verificationToken.token);
@@ -41,7 +37,16 @@ export const authRouter = router({
 			return { success: "Confirmation email sent!" };
 		}
 
+		// Check if password is correct
+		const passwordMatches = await compare(password, existingUser.password);
+
+		if (!passwordMatches) {
+			return { error: "Invalid credentials." };
+		}
+
+		// Check if two factor is enabled
 		if (existingUser.isTwoFactorEnabled && existingUser.email) {
+			// Check if code is provided
 			if (code) {
 				const twoFactorToken = await getTwoFactorTokenByEmail(existingUser.email);
 
@@ -81,6 +86,7 @@ export const authRouter = router({
 					}
 				});
 			} else {
+				// Generate new code and send it
 				const twoFactorToken = await generateTwoFactorToken(existingUser.email);
 				await sendTwoFactorToken(existingUser.email, twoFactorToken.token);
 
