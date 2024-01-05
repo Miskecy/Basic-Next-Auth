@@ -3,8 +3,8 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useState, useTransition } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { SignInSchema } from '@/schemas';
 import { Input } from '@/components/ui/input';
@@ -20,12 +20,14 @@ import {
 import CardWrapper from '@/components/auth/card-wrapper';
 import FormError from '@/components/form-error';
 import FormSuccess from '@/components/form-success';
-import { login } from '@/server/actions/login';
 import Link from 'next/link';
+import { trpc } from '@/app/_trpc/client';
+import { DEFAULT_LOGIN_REDIRECT_URL } from '@/routes';
 
 const SignInForm = () => {
     const searchParams = useSearchParams();
     const callbackUrl = searchParams.get('callbackUrl');
+    const router = useRouter();
 
     const urlError =
         searchParams.get('error') === 'OAuthAccountNotLinked'
@@ -35,7 +37,7 @@ const SignInForm = () => {
     const [showTwoFactor, setShowTwoFactor] = useState<boolean>(false);
     const [error, setError] = useState<string | undefined>('');
     const [success, setSuccess] = useState<string | undefined>('');
-    const [isPending, startTransition] = useTransition();
+
     const form = useForm<z.infer<typeof SignInSchema>>({
         resolver: zodResolver(SignInSchema),
         defaultValues: {
@@ -45,31 +47,42 @@ const SignInForm = () => {
         },
     });
 
+    const { mutate: TRPCLogin, isLoading } = trpc.login.useMutation({
+        onSuccess: () => {
+            router.push(callbackUrl || DEFAULT_LOGIN_REDIRECT_URL);
+        },
+        onError: error => {
+            setError(error.message);
+            // setError('Something went wrong!');
+        },
+        onSettled: res => {
+            console.log(res);
+            if (!res) return;
+
+            if ('error' in res && res.error) {
+                setError(res.error);
+            }
+
+            if ('success' in res && res.success) {
+                form.reset();
+                setSuccess(res.success);
+            }
+
+            if ('twoFactor' in res && res.twoFactor) {
+                setShowTwoFactor(res.twoFactor);
+            }
+
+            router.refresh();
+        },
+    });
+
     const onSubmit = (data: z.infer<typeof SignInSchema>) => {
         setError('');
         setSuccess('');
 
-        // Server side validation
-        startTransition(() => {
-            login(data, callbackUrl)
-                .then(res => {
-                    if (res?.error) {
-                        form.reset();
-                        setError(res.error);
-                    }
-
-                    if (res?.success) {
-                        form.reset();
-                        setSuccess(res.success);
-                    }
-
-                    if (res?.twoFactor) {
-                        setShowTwoFactor(true);
-                    }
-                })
-                .catch(() => {
-                    setError('Something went wrong!');
-                });
+        // Client side validation
+        TRPCLogin({
+            data,
         });
     };
     return (
@@ -84,6 +97,7 @@ const SignInForm = () => {
                     onSubmit={form.handleSubmit(onSubmit)}
                     className="space-y-6"
                 >
+                    {/* <pre>{JSON.stringify(form.getValues(), null, 2)}</pre> */}
                     <div className="space-y-4">
                         {showTwoFactor ? (
                             <FormField
@@ -96,7 +110,7 @@ const SignInForm = () => {
                                             <Input
                                                 {...field}
                                                 placeholder="000000"
-                                                disabled={isPending}
+                                                disabled={isLoading}
                                             />
                                         </FormControl>
                                         <FormMessage {...field} />
@@ -118,13 +132,14 @@ const SignInForm = () => {
                                                     {...field}
                                                     placeholder="john.doe@mail.com"
                                                     type="email"
-                                                    disabled={isPending}
+                                                    disabled={isLoading}
                                                 />
                                             </FormControl>
                                             <FormMessage {...field} />
                                         </FormItem>
                                     )}
                                 />
+
                                 <FormField
                                     control={form.control}
                                     name="password"
@@ -136,7 +151,7 @@ const SignInForm = () => {
                                                     {...field}
                                                     placeholder="********"
                                                     type="password"
-                                                    disabled={isPending}
+                                                    disabled={isLoading}
                                                 />
                                             </FormControl>
                                             <Button
@@ -161,7 +176,7 @@ const SignInForm = () => {
                     <Button
                         type="submit"
                         className="w-full font-semibold"
-                        disabled={isPending}
+                        disabled={isLoading}
                     >
                         {showTwoFactor ? 'Confirm' : 'Sign In'}
                     </Button>

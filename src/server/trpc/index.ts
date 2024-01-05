@@ -1,9 +1,9 @@
 import { merge } from '@/server/trpc/trpc';
 
-import { testRouter } from '@/server/trpc/routers/test';
+import { authRouter } from '@/server/trpc/routers/auth';
 
 export const appRouter = merge(
-	testRouter
+	authRouter
 );
 
 // export type definition of API

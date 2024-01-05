@@ -1,7 +1,12 @@
+'use client';
+
 import SignInButton from '@/components/auth/sign-in-button';
 import { Button } from '@/components/ui/button';
+import { trpc } from './_trpc/client';
 
 const HomePage = () => {
+    const { data } = trpc.test.useQuery();
+    if (!data) return <div>Loading...</div>;
     return (
         // trick to get the background color gradient
         //bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-700 to-gray-950
@@ -13,6 +18,7 @@ const HomePage = () => {
                 <p className="text-md">
                     A simple authentication app built with Next.js and Prisma
                 </p>
+                <pre>{JSON.stringify(data, null, 2)}</pre>
                 <div>
                     <SignInButton mode="modal" asChild>
                         <Button

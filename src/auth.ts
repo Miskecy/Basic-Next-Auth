@@ -24,11 +24,11 @@ export const {
 	handlers: { GET, POST },
 	auth,
 	signIn,
-	signOut
+	signOut,
 } = NextAuth({
 	pages: {
 		signIn: "/auth/sign-in",
-		error: "/auth/error"
+		error: "/auth/error",
 	},
 	events: {
 		async linkAccount({ user }) {

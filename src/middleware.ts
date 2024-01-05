@@ -15,14 +15,11 @@ export default auth((req) => {
 	const isAuthenticated = !!req.auth;
 
 	const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
+	const isTrpcRoute = nextUrl.pathname.startsWith(trpcPrefix);
 	const isAuthRoute = authRoutes.includes(nextUrl.pathname);
 	const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
 
-	if (isApiAuthRoute) {
-		return null;
-	}
-
-	if (trpcPrefix) {
+	if (isApiAuthRoute || isTrpcRoute) {
 		return null;
 	}
 
