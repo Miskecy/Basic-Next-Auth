@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useState, useTransition } from 'react';
 
+import { trpc } from '@/app/_trpc/client';
 import { SignUpSchema } from '@/schemas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,12 +20,10 @@ import {
 import CardWrapper from '@/components/auth/card-wrapper';
 import FormError from '@/components/form-error';
 import FormSuccess from '@/components/form-success';
-import { register } from '@/server/actions/register';
 
 const SignUpForm = () => {
     const [error, setError] = useState<string | undefined>('');
     const [success, setSuccess] = useState<string | undefined>('');
-    const [isPending, startTransition] = useTransition();
     const form = useForm<z.infer<typeof SignUpSchema>>({
         resolver: zodResolver(SignUpSchema),
         defaultValues: {
@@ -35,16 +34,26 @@ const SignUpForm = () => {
         },
     });
 
+    const { mutate: TRPCRegister, isLoading } = trpc.register.useMutation({
+        onSettled: res => {
+            if (!res) return;
+
+            if ('error' in res) {
+                setError(res.error);
+            }
+
+            if ('success' in res) {
+                setSuccess(res.success);
+            }
+        },
+    });
+
     const onSubmit = (data: z.infer<typeof SignUpSchema>) => {
         setError('');
         setSuccess('');
 
-        // Server side validation
-        startTransition(() => {
-            register(data).then(res => {
-                setError(res.error);
-                setSuccess(res.success);
-            });
+        TRPCRegister({
+            data,
         });
     };
     return (
@@ -70,7 +79,7 @@ const SignUpForm = () => {
                                         <Input
                                             {...field}
                                             placeholder="John Doe"
-                                            disabled={isPending}
+                                            disabled={isLoading}
                                             type="text"
                                         />
                                     </FormControl>
@@ -88,7 +97,7 @@ const SignUpForm = () => {
                                         <Input
                                             {...field}
                                             placeholder="john.doe@mail.com"
-                                            disabled={isPending}
+                                            disabled={isLoading}
                                             type="email"
                                         />
                                     </FormControl>
@@ -107,7 +116,7 @@ const SignUpForm = () => {
                                             {...field}
                                             placeholder="********"
                                             type="password"
-                                            disabled={isPending}
+                                            disabled={isLoading}
                                         />
                                     </FormControl>
                                     <FormMessage {...field} />
@@ -125,7 +134,7 @@ const SignUpForm = () => {
                                             {...field}
                                             placeholder="********"
                                             type="password"
-                                            disabled={isPending}
+                                            disabled={isLoading}
                                         />
                                     </FormControl>
                                     <FormMessage {...field} />
@@ -138,7 +147,7 @@ const SignUpForm = () => {
                     <Button
                         type="submit"
                         className="w-full font-semibold"
-                        disabled={isPending}
+                        disabled={isLoading}
                     >
                         Sign Up
                     </Button>

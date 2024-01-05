@@ -1,11 +1,11 @@
 import z from 'zod';
 import { AuthError } from 'next-auth';
 import { router, publicProcedure } from '@/server/trpc/trpc';
-import { compare } from 'bcryptjs'
+import bcrypt from 'bcryptjs'
 
 import { signIn } from '@/auth';
 import db from '@/lib/db';
-import { SignInSchema } from '@/schemas';
+import { SignInSchema, SignUpSchema } from '@/schemas';
 
 import { getUserByEmail } from '@/server/utils/user';
 import { getTwoFactorTokenByEmail } from '@/server/utils/two-factor-token';
@@ -38,7 +38,7 @@ export const authRouter = router({
 		}
 
 		// Check if password is correct
-		const passwordMatches = await compare(password, existingUser.password);
+		const passwordMatches = await bcrypt.compare(password, existingUser.password);
 
 		if (!passwordMatches) {
 			return { error: "Invalid credentials." };
@@ -112,6 +112,39 @@ export const authRouter = router({
 
 			throw error;
 		}
+	}),
+	register: publicProcedure.input(z.object({
+		data: SignUpSchema
+	})).mutation(async ({ input }) => {
+		const { name, email, password } = input.data;
+
+		// encrypt password
+		const hashedPassword = await bcrypt.hash(password, 10);
+
+		// verify email is not already in use
+		const existingUser = await getUserByEmail(email);
+
+		if (existingUser) {
+			return { error: "Email already in use." };
+		}
+
+		// create user
+		await db.user.create({
+			data: {
+				name,
+				email,
+				password: hashedPassword,
+			},
+		});
+
+		const verificationToken = await generateVerificationToken(email);
+
+		// send email verification
+		await sendVerificationEmail(verificationToken.email, verificationToken.token);
+
+		return {
+			success: "Confirmation email sent!",
+		};
 	}),
 	test: publicProcedure.query(async () => {
 		return { success: "Test successful!" };

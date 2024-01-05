@@ -59,16 +59,16 @@ const SignInForm = () => {
             console.log(res);
             if (!res) return;
 
-            if ('error' in res && res.error) {
+            if ('error' in res) {
                 setError(res.error);
             }
 
-            if ('success' in res && res.success) {
+            if ('success' in res) {
                 form.reset();
                 setSuccess(res.success);
             }
 
-            if ('twoFactor' in res && res.twoFactor) {
+            if ('twoFactor' in res) {
                 setShowTwoFactor(res.twoFactor);
             }
 
