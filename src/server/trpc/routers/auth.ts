@@ -146,7 +146,4 @@ export const authRouter = router({
 			success: "Confirmation email sent!",
 		};
 	}),
-	test: publicProcedure.query(async () => {
-		return { success: "Test successful!" };
-	})
 })
