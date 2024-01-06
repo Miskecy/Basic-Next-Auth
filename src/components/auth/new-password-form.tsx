@@ -3,9 +3,10 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+import { trpc } from '@/app/_trpc/client';
 import { NewPasswordSchema } from '@/schemas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,7 +21,6 @@ import {
 import CardWrapper from '@/components/auth/card-wrapper';
 import FormError from '@/components/form-error';
 import FormSuccess from '@/components/form-success';
-import { newPassword } from '@/server/actions/new-password';
 
 const NewPasswordForm = () => {
     const searchParams = useSearchParams();
@@ -28,7 +28,6 @@ const NewPasswordForm = () => {
 
     const [error, setError] = useState<string | undefined>('');
     const [success, setSuccess] = useState<string | undefined>('');
-    const [isPending, startTransition] = useTransition();
     const form = useForm<z.infer<typeof NewPasswordSchema>>({
         resolver: zodResolver(NewPasswordSchema),
         defaultValues: {
@@ -37,16 +36,26 @@ const NewPasswordForm = () => {
         },
     });
 
+    const { mutate: TRPCNewPassword, isLoading } = trpc.newPassword.useMutation(
+        {
+            onError: error => setError(error.message),
+            onSettled: res => {
+                if (!res) return;
+
+                if ('success' in res) {
+                    setSuccess(res.success);
+                }
+            },
+        }
+    );
+
     const onSubmit = (data: z.infer<typeof NewPasswordSchema>) => {
         setError('');
         setSuccess('');
 
-        // Server side validation
-        startTransition(() => {
-            newPassword(data, token).then(res => {
-                setError(res?.error);
-                setSuccess(res?.success);
-            });
+        TRPCNewPassword({
+            data,
+            token,
         });
     };
 
@@ -73,7 +82,7 @@ const NewPasswordForm = () => {
                                             {...field}
                                             placeholder="********"
                                             type="password"
-                                            disabled={isPending}
+                                            disabled={isLoading}
                                         />
                                     </FormControl>
                                     <FormMessage {...field} />
@@ -93,7 +102,7 @@ const NewPasswordForm = () => {
                                             {...field}
                                             placeholder="********"
                                             type="password"
-                                            disabled={isPending}
+                                            disabled={isLoading}
                                         />
                                     </FormControl>
                                     <FormMessage {...field} />
@@ -106,7 +115,7 @@ const NewPasswordForm = () => {
                     <Button
                         type="submit"
                         className="w-full font-semibold"
-                        disabled={isPending}
+                        disabled={isLoading}
                     >
                         Reset Password
                     </Button>

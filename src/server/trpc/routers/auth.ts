@@ -3,17 +3,19 @@ import { AuthError } from 'next-auth';
 import { router, publicProcedure } from '@/server/trpc/trpc';
 import bcrypt from 'bcryptjs'
 
-import { signIn } from '@/auth';
+import { signIn, signOut } from '@/auth';
 import db from '@/lib/db';
-import { SignInSchema, SignUpSchema } from '@/schemas';
+import { ForgotPasswordSchema, NewPasswordSchema, SignInSchema, SignUpSchema } from '@/schemas';
 
 import { getUserByEmail } from '@/server/utils/user';
 import { getTwoFactorTokenByEmail } from '@/server/utils/two-factor-token';
 import { getTwoFactorConfirmationByUserId } from '@/server/utils/two-factor-confirmation';
 
-import { generateTwoFactorToken, generateVerificationToken } from '@/lib/tokens';
-import { sendTwoFactorToken, sendVerificationEmail } from '@/lib/mail';
+import { generatePasswordResetToken, generateTwoFactorToken, generateVerificationToken } from '@/lib/tokens';
+import { sendPasswordResetEmail, sendTwoFactorToken, sendVerificationEmail } from '@/lib/mail';
 import { TRPCError } from '@trpc/server';
+import { getPasswordResetTokenByToken } from '@/server/utils/password-reset-token';
+import { getVerificationTokenByToken } from '@/server/utils/verification-token';
 
 export const authRouter = router({
 	login: publicProcedure.input(
@@ -182,4 +184,155 @@ export const authRouter = router({
 			success: "Confirmation email sent!",
 		};
 	}),
+	reset: publicProcedure.input(z.object({
+		data: ForgotPasswordSchema
+	})).mutation(async ({ input }) => {
+		const { email } = input.data;
+
+		const existingUser = await getUserByEmail(email);
+
+		if (!existingUser || !existingUser.password || !existingUser.email) {
+			// return { error: "Email does not exist!" };
+			throw new TRPCError({
+				code: 'CONFLICT',
+				message: 'Email already in use.',
+			});
+		}
+
+		if (!existingUser.emailVerified) {
+			// return { error: "Email not verified!" };
+			throw new TRPCError({
+				code: 'UNAUTHORIZED',
+				message: 'Email not verified.',
+			});
+		}
+
+		const passwordResetToken = await generatePasswordResetToken(email);
+		await sendPasswordResetEmail(passwordResetToken.email, passwordResetToken.token);
+
+		return { success: "Password reset email sent!" };
+	}),
+	newPassword: publicProcedure.input(z.object({
+		data: NewPasswordSchema,
+		token: z.string().nullable()
+	})).mutation(async ({ input }) => {
+		const { password } = input.data;
+		const token = input.token;
+
+		if (!token) {
+			// return { error: "Missing token." };
+			throw new TRPCError({
+				code: 'BAD_REQUEST',
+				message: 'Missing token.',
+			});
+		}
+
+		const existingToken = await getPasswordResetTokenByToken(token);
+
+		if (!existingToken) {
+			// return { error: "Invalid token!" };
+			throw new TRPCError({
+				code: 'BAD_REQUEST',
+				message: 'Invalid token.',
+			});
+		}
+
+		const hasExpired = new Date(existingToken.expires) < new Date();
+
+		if (hasExpired) {
+			// return { error: "Token has expired!" };
+			throw new TRPCError({
+				code: 'BAD_REQUEST',
+				message: 'Token has expired.',
+			});
+		}
+
+		const existingUser = await getUserByEmail(existingToken.email);
+
+		if (!existingUser) {
+			// return { error: "Email does not exist!" };
+			throw new TRPCError({
+				code: 'BAD_REQUEST',
+				message: 'Email does not exist.',
+			});
+		}
+
+		const hashedPassword = await bcrypt.hash(password, 10);
+
+		await db.user.update({
+			where: { id: existingUser.id },
+			data: {
+				password: hashedPassword
+			}
+		});
+
+		await db.passwordResetToken.delete({
+			where: { id: existingToken.id }
+		});
+
+		return { success: "Password has been updated!" };
+	}),
+	emailConfirmation: publicProcedure.input(z.object({
+		token: z.string().nullable()
+	})).mutation(async ({ input }) => {
+		const { token } = input;
+
+		if (!token) {
+			throw new TRPCError({
+				code: 'BAD_REQUEST',
+				message: 'Missing token.',
+			});
+		}
+
+		const existingToken = await getVerificationTokenByToken(token);
+
+		if (!existingToken) {
+			// return { error: "Token does not exist" };
+			throw new TRPCError({
+				code: 'NOT_FOUND',
+				message: 'Invalid token.',
+			});
+		}
+
+		const hasExpired = new Date(existingToken.expires) < new Date();
+
+		if (hasExpired) {
+			// return { error: "Token has expired" };
+			throw new TRPCError({
+				code: 'UNAUTHORIZED',
+				message: 'Token has expired.',
+			});
+		}
+
+		const existingUser = await getUserByEmail(existingToken.email);
+
+		if (!existingUser) {
+			// return { error: "Email does not exist" };
+			throw new TRPCError({
+				code: 'BAD_REQUEST',
+				message: 'Email does not exist.',
+			});
+		}
+
+		await db.user.update({
+			where: {
+				id: existingUser.id
+			},
+			data: {
+				emailVerified: new Date(),
+				email: existingToken.email
+			},
+		})
+
+		await db.verificationToken.delete({
+			where: {
+				id: existingToken.id
+			}
+		})
+
+		return { success: "Email has been verified!" };
+	}),
+	logout: publicProcedure.mutation(async () => {
+		await signOut({ redirect: false });
+	})
 })

@@ -3,8 +3,9 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 
+import { trpc } from '@/app/_trpc/client';
 import { ForgotPasswordSchema } from '@/schemas';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,12 +20,10 @@ import {
 import CardWrapper from '@/components/auth/card-wrapper';
 import FormError from '@/components/form-error';
 import FormSuccess from '@/components/form-success';
-import { reset } from '@/server/actions/reset';
 
 const ForgotPasswordForm = () => {
     const [error, setError] = useState<string | undefined>('');
     const [success, setSuccess] = useState<string | undefined>('');
-    const [isPending, startTransition] = useTransition();
     const form = useForm<z.infer<typeof ForgotPasswordSchema>>({
         resolver: zodResolver(ForgotPasswordSchema),
         defaultValues: {
@@ -32,16 +31,23 @@ const ForgotPasswordForm = () => {
         },
     });
 
+    const { mutate: TRPCForgotPassword, isLoading } = trpc.reset.useMutation({
+        onError: error => setError(error.message),
+        onSettled: res => {
+            if (!res) return;
+
+            if ('success' in res) {
+                setSuccess(res.success);
+            }
+        },
+    });
+
     const onSubmit = (data: z.infer<typeof ForgotPasswordSchema>) => {
         setError('');
         setSuccess('');
 
-        // Server side validation
-        startTransition(() => {
-            reset(data).then(res => {
-                setError(res?.error);
-                setSuccess(res?.success);
-            });
+        TRPCForgotPassword({
+            data,
         });
     };
 
@@ -67,7 +73,7 @@ const ForgotPasswordForm = () => {
                                         <Input
                                             {...field}
                                             placeholder="john.doe@mail.com"
-                                            disabled={isPending}
+                                            disabled={isLoading}
                                         />
                                     </FormControl>
                                     <FormMessage {...field} />
@@ -80,7 +86,7 @@ const ForgotPasswordForm = () => {
                     <Button
                         type="submit"
                         className="w-full font-semibold"
-                        disabled={isPending}
+                        disabled={isLoading}
                     >
                         Reset Password
                     </Button>

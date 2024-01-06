@@ -4,10 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { BeatLoader } from 'react-spinners';
 
-import { newVerification } from '@/server/actions/new-verification';
 import CardWrapper from '@/components/auth/card-wrapper';
 import FormSuccess from '@/components/form-success';
 import FormError from '@/components/form-error';
+import { trpc } from '@/app/_trpc/client';
 
 const NewVerificationForm = () => {
     const [error, setError] = useState<string | undefined>(undefined);
@@ -17,28 +17,25 @@ const NewVerificationForm = () => {
 
     const token = searchParams.get('token');
 
+    const { mutate: EmailConfirmation } = trpc.emailConfirmation.useMutation({
+        onError: error => setError(error.message),
+        onSettled: res => {
+            if (!res) return;
+
+            if ('success' in res) {
+                setSuccess(res.success);
+            }
+        },
+    });
+
     const onsubmit = useCallback(() => {
         if (success || error) return;
 
-        if (!token) {
-            setError('Missing token');
-            return;
-        }
+        EmailConfirmation({
+            token,
+        });
+    }, [EmailConfirmation, error, success, token]);
 
-        newVerification(token)
-            .then(res => {
-                setError(res.error);
-                setSuccess(res.success);
-            })
-            .catch(() => {
-                setError('Failed to confirm email address');
-            });
-    }, [token, error, success]);
-
-    // In development, this will be called Twice.
-    // Once on the server, and once on the client.
-    // In production, this will only be called once.
-    // And will cause a error "Token does not exist"
     useEffect(() => {
         onsubmit();
     }, [onsubmit]);
