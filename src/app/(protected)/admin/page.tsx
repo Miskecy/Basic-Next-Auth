@@ -4,23 +4,24 @@ import RoleGate from '@/components/auth/role-gate';
 import FormSuccess from '@/components/form-success';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { admin } from '@/server/actions/admin';
 import { UserRole } from '@prisma/client';
 import { toast as sonner } from 'sonner';
 
 import { GiBossKey } from 'react-icons/gi';
+import { trpc } from '@/app/_trpc/client';
 
 const AdminPage = () => {
-    const onServerRouteClick = () => {
-        admin().then(res => {
-            if (res.success) {
-                sonner.success('Allowed Server Route!');
-            }
+    const { mutate: admin } = trpc.admin.useMutation({
+        onSuccess: () => {
+            sonner.success('Allowed Server Route!');
+        },
+        onError: () => {
+            sonner.error('Forbidden Server Route!');
+        },
+    });
 
-            if (res.error) {
-                sonner.error('Forbidden Server Route!');
-            }
-        });
+    const onServerRouteClick = () => {
+        admin();
     };
 
     const onApiRouteClclick = () => {

@@ -27,8 +27,31 @@ const isAuth = middleware(async opts => {
 	});
 });
 
+const isAdminAuth = middleware(async opts => {
+
+	const user = await currentUser();
+
+	if (!user) {
+		throw new TRPCError({ code: 'UNAUTHORIZED', message: 'You are not logged in!' });
+	}
+
+	if (user.role !== 'ADMIN') {
+		throw new TRPCError({ code: 'FORBIDDEN', message: 'You are not an admin!' });
+	}
+
+	return opts.next({
+		ctx: {
+			userId: user.id,
+			user,
+			userEmail: user.email,
+			role: user.role,
+		},
+	});
+});
+
 // Base router and procedure helpers
 export const router = t.router;
 export const merge = t.mergeRouters;
 export const publicProcedure = t.procedure;
 export const protectedProcedure = t.procedure.use(isAuth);
+export const adminProcedure = t.procedure.use(isAdminAuth);
