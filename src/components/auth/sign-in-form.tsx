@@ -23,6 +23,7 @@ import FormSuccess from '@/components/form-success';
 import Link from 'next/link';
 import { trpc } from '@/app/_trpc/client';
 import { DEFAULT_LOGIN_REDIRECT_URL } from '@/routes';
+import { TRPCError } from '@trpc/server';
 
 const SignInForm = () => {
     const searchParams = useSearchParams();
@@ -48,20 +49,10 @@ const SignInForm = () => {
     });
 
     const { mutate: TRPCLogin, isLoading } = trpc.login.useMutation({
-        onSuccess: () => {
-            router.push(callbackUrl || DEFAULT_LOGIN_REDIRECT_URL);
-        },
-        onError: error => {
-            setError(error.message);
-            // setError('Something went wrong!');
-        },
+        onSuccess: () => router.push(callbackUrl || DEFAULT_LOGIN_REDIRECT_URL),
+        onError: error => setError(error.message),
         onSettled: res => {
-            console.log(res);
             if (!res) return;
-
-            if ('error' in res) {
-                setError(res.error);
-            }
 
             if ('success' in res) {
                 form.reset();

@@ -13,6 +13,7 @@ import { getTwoFactorConfirmationByUserId } from '@/server/utils/two-factor-conf
 
 import { generateTwoFactorToken, generateVerificationToken } from '@/lib/tokens';
 import { sendTwoFactorToken, sendVerificationEmail } from '@/lib/mail';
+import { TRPCError } from '@trpc/server';
 
 export const authRouter = router({
 	login: publicProcedure.input(
@@ -26,7 +27,11 @@ export const authRouter = router({
 
 		// Check witch provider is used
 		if (!existingUser || !existingUser.password || !existingUser.email) {
-			return { error: "Email does not exist!" };
+			// return { error: "Email does not exist!" };
+			throw new TRPCError({
+				code: 'CONFLICT',
+				message: 'Email already in use.',
+			});
 		}
 
 		// Check if email is verified
@@ -41,7 +46,11 @@ export const authRouter = router({
 		const passwordMatches = await bcrypt.compare(password, existingUser.password);
 
 		if (!passwordMatches) {
-			return { error: "Invalid credentials." };
+			// return { error: "Invalid credentials." };
+			throw new TRPCError({
+				code: 'UNAUTHORIZED',
+				message: 'Invalid credentials.',
+			});
 		}
 
 		// Check if two factor is enabled
@@ -51,17 +60,30 @@ export const authRouter = router({
 				const twoFactorToken = await getTwoFactorTokenByEmail(existingUser.email);
 
 				if (!twoFactorToken) {
-					return { error: "Invalid code." };
+					// return { error: "Invalid code." };
+					throw new TRPCError({
+						code: 'UNAUTHORIZED',
+						message: 'Invalid code.',
+					});
 				}
 
 				if (twoFactorToken.token !== code) {
-					return { error: "Invalid code." };
+					// return { error: "Invalid code." };
+					throw new TRPCError({
+						code: 'UNAUTHORIZED',
+						message: 'Invalid code.',
+					});
 				}
 
 				const hasExpired = new Date(twoFactorToken.expires) < new Date();
 
 				if (hasExpired) {
-					return { error: "Code has expired." };
+					// return { error: "Code has expired." };
+
+					throw new TRPCError({
+						code: 'UNAUTHORIZED',
+						message: 'Code has expired.',
+					});
 				}
 
 				await db.twoFactorToken.delete({
@@ -104,9 +126,19 @@ export const authRouter = router({
 			if (error instanceof AuthError) {
 				switch (error.type) {
 					case "CredentialsSignin":
-						return { error: "Invalid credentials." };
+						// return { error: "Invalid credentials." };
+						throw new TRPCError({
+							code: 'UNAUTHORIZED',
+							message: 'Invalid credentials.',
+							cause: error,
+						});
 					default:
-						return { error: "Something went wrong." };
+						// return { error: "Something went wrong." };
+						throw new TRPCError({
+							code: 'INTERNAL_SERVER_ERROR',
+							message: 'Something went wrong.',
+							cause: error,
+						});
 				}
 			}
 
@@ -125,7 +157,11 @@ export const authRouter = router({
 		const existingUser = await getUserByEmail(email);
 
 		if (existingUser) {
-			return { error: "Email already in use." };
+			// return { error: "Email already in use." };
+			throw new TRPCError({
+				code: 'CONFLICT',
+				message: 'Email already in use.',
+			});
 		}
 
 		// create user
