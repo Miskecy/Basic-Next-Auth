@@ -30,4 +30,4 @@ const isAuth = middleware(async opts => {
 export const router = t.router;
 export const merge = t.mergeRouters;
 export const publicProcedure = t.procedure;
-export const protectedProcedure = t.procedure;
+export const protectedProcedure = t.procedure.use(isAuth);

@@ -7,7 +7,7 @@ import { trpc } from './_trpc/client';
 const HomePage = () => {
     const { data: publicTest } = trpc.publicTest.useQuery();
     const { data: protectedTest } = trpc.protectTest.useQuery();
-    if (!publicTest || !protectedTest) return <div>Loading...</div>;
+
     return (
         // trick to get the background color gradient
         //bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-700 to-gray-950
