@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { UserRole } from '@prisma/client';
 
@@ -10,7 +10,6 @@ import { SettingsSchema } from '@/schemas';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { settings } from '@/server/actions/settings';
 import {
     Form,
     FormControl,
@@ -34,12 +33,12 @@ import {
 import { Switch } from '@/components/ui/switch';
 
 import { HiCog8Tooth } from 'react-icons/hi2';
+import { trpc } from '@/app/_trpc/client';
 
 const SettingsPage = () => {
     const user = useCurrentUser();
     const { update } = useSession();
 
-    const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>();
     const [success, setSuccess] = useState<string | undefined>();
 
@@ -52,28 +51,28 @@ const SettingsPage = () => {
             newPassword: undefined,
             newPasswordConfirm: undefined,
             role: user?.role ?? undefined,
+            isTwoFactorEnabled: user?.isTwoFactorEnabled ?? undefined,
         },
     });
+
+    const { mutate: TRPCUpdateSettings, isLoading } =
+        trpc.updateSettings.useMutation({
+            onSuccess: data => {
+                update();
+                if ('success' in data) setSuccess(data.success);
+            },
+            onError: error => setError(error.message),
+        });
 
     const onSubmit = (data: z.infer<typeof SettingsSchema>) => {
         setError(undefined);
         setSuccess(undefined);
 
-        startTransition(() => {
-            settings(data)
-                .then(res => {
-                    if (res.error) {
-                        setError(res.error);
-                    }
-
-                    if (res.success) {
-                        update();
-                        setSuccess(res.success);
-                    }
-                })
-                .catch(() => setError('Something went wrong'));
+        TRPCUpdateSettings({
+            data,
         });
     };
+
     return (
         <Card className="w-[600px]">
             <CardHeader className="text-2xl font-semibold">
@@ -99,7 +98,7 @@ const SettingsPage = () => {
                                             <Input
                                                 placeholder="John Doe"
                                                 {...field}
-                                                disabled={isPending}
+                                                disabled={isLoading}
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -119,7 +118,7 @@ const SettingsPage = () => {
                                                         placeholder="john.doe@mail.com"
                                                         type="email"
                                                         {...field}
-                                                        disabled={isPending}
+                                                        disabled={isLoading}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -137,7 +136,7 @@ const SettingsPage = () => {
                                                         placeholder="********"
                                                         type="password"
                                                         {...field}
-                                                        disabled={isPending}
+                                                        disabled={isLoading}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -157,7 +156,7 @@ const SettingsPage = () => {
                                                         placeholder="********"
                                                         type="password"
                                                         {...field}
-                                                        disabled={isPending}
+                                                        disabled={isLoading}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -177,7 +176,7 @@ const SettingsPage = () => {
                                                         placeholder="********"
                                                         type="password"
                                                         {...field}
-                                                        disabled={isPending}
+                                                        disabled={isLoading}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -195,7 +194,7 @@ const SettingsPage = () => {
                                         <FormLabel>Role</FormLabel>
                                         <FormControl>
                                             <Select
-                                                disabled={isPending}
+                                                disabled={isLoading}
                                                 onValueChange={field.onChange}
                                                 defaultValue={field.value}
                                             >
@@ -240,7 +239,7 @@ const SettingsPage = () => {
                                             </div>
                                             <FormControl>
                                                 <Switch
-                                                    disabled={isPending}
+                                                    disabled={isLoading}
                                                     checked={field.value}
                                                     onCheckedChange={
                                                         field.onChange

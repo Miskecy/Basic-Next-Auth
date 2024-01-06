@@ -10,18 +10,22 @@ export const SettingsSchema = z.object({
 	newPassword: z.optional(z.string().min(6)),
 	newPasswordConfirm: z.optional(z.string().min(6)),
 })
-	.refine((data) => (data.password && data.newPassword), {
+	// check if password is provided
+	.refine((data) => !data.password || data.newPassword, {
 		message: 'New password is required',
 		path: ['newPassword'],
 	})
-	.refine((data) => (data.newPassword && data.newPasswordConfirm), {
-		message: 'New password confirmation is required',
-		path: ['newPasswordConfirm'],
-	})
+
+	// check if passwordConfirm matches newPassword
 	.refine((data) => data.newPassword === data.newPasswordConfirm, {
 		message: 'Passwords must match',
 		path: ['newPasswordConfirm'],
 	});
+
+
+
+
+
 
 export const SignInSchema = z.object({
 	email: z.string().email({
