@@ -35,12 +35,9 @@ const SignUpForm = () => {
     });
 
     const { mutate: TRPCRegister, isLoading } = trpc.register.useMutation({
+        onError: error => setError(error.message),
         onSettled: res => {
             if (!res) return;
-
-            if ('error' in res) {
-                setError(res.error);
-            }
 
             if ('success' in res) {
                 setSuccess(res.success);
