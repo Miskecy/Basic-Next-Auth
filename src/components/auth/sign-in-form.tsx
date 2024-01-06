@@ -1,5 +1,7 @@
 'use client';
 
+import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,6 +9,10 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { SignInSchema } from '@/schemas';
+import { DEFAULT_LOGIN_REDIRECT_URL } from '@/routes';
+
+import { trpc } from '@/app/_trpc/client';
+
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,15 +26,12 @@ import {
 import CardWrapper from '@/components/auth/card-wrapper';
 import FormError from '@/components/form-error';
 import FormSuccess from '@/components/form-success';
-import Link from 'next/link';
-import { trpc } from '@/app/_trpc/client';
-import { DEFAULT_LOGIN_REDIRECT_URL } from '@/routes';
-import { TRPCError } from '@trpc/server';
 
 const SignInForm = () => {
     const searchParams = useSearchParams();
     const callbackUrl = searchParams.get('callbackUrl');
     const router = useRouter();
+    const { update } = useSession();
 
     const urlError =
         searchParams.get('error') === 'OAuthAccountNotLinked'
@@ -49,7 +52,10 @@ const SignInForm = () => {
     });
 
     const { mutate: TRPCLogin, isLoading } = trpc.login.useMutation({
-        onSuccess: () => router.push(callbackUrl || DEFAULT_LOGIN_REDIRECT_URL),
+        onSuccess: () => {
+            update();
+            router.push(callbackUrl || DEFAULT_LOGIN_REDIRECT_URL);
+        },
         onError: error => setError(error.message),
         onSettled: res => {
             if (!res) return;
